@@ -37,11 +37,15 @@ class VSCode(dotbot.Plugin):
             self._log.error("Error format, please refer to documentation.")
             return False
 
+        custom_binary = None
+        if "custom_binary" in data:
+            custom_binary = data["custom_binary"]
+
         if "insiders" not in data:
             insiders = False
         else:
             insiders = data["insiders"]
-        code = VSCodeInstance(insiders)
+        code = VSCodeInstance(insiders, custom_binary)
         vsfile = data["file"]
         return self._sync_vscodefile(vsfile, code)
 
@@ -51,7 +55,12 @@ class VSCode(dotbot.Plugin):
             return False
         for extension in data:
             extension_status = data[extension]
-            if not isinstance(extension_status, dict) or len(extension_status) > 2:
+            if not isinstance(extension_status, dict) or len(extension_status) > 3:
+                self._log.error("Error format, please refer to documentation.")
+                return False
+            elif len(extension_status) == 3 and (
+                "status" not in extension_status or "insiders" not in extension_status or "custom_binary" not in extension_status
+            ):
                 self._log.error("Error format, please refer to documentation.")
                 return False
             elif len(extension_status) == 2 and (
@@ -63,11 +72,15 @@ class VSCode(dotbot.Plugin):
                 self._log.error("Error format, please refer to documentation.")
                 return False
 
+            custom_binary = None
+            if "custom_binary" in extension_status:
+                custom_binary = extension_status["custom_binary"]
+
             if "insiders" not in extension_status:
                 insiders = False
             else:
                 insiders = extension_status["insiders"]
-            code = VSCodeInstance(insiders)
+            code = VSCodeInstance(insiders, custom_binary)
             try:
                 if extension_status["status"] == "install":
                     code.install(extension)
@@ -77,7 +90,7 @@ class VSCode(dotbot.Plugin):
                     self._log.error("Error format, please refer to documentation.")
                     return False
             except VSCodeError as e:
-                self.log.error(e.message)
+                self._log.error(e.message)
                 return False
         return True
 
@@ -121,10 +134,14 @@ class VSCode(dotbot.Plugin):
 
 
 class VSCodeInstance(object):
-    def __init__(self, insiders=False):
+    def __init__(self, insiders=False, custom_binary=None):
+        print(custom_binary)
         if not insiders:
             self._name = "Visual Studio Code"
-            self._binary = which("code")
+            if custom_binary is not None:
+                self._binary = which(custom_binary)
+            else:
+                self._binary = which("code")
         else:
             self._name = "Visual Studio Code Insiders"
             self._binary = which("code-insiders")
